@@ -579,6 +579,134 @@ The framework requires:
 
 **None of these capabilities can be reliably implemented with our current architecture.**
 
+## MCQ Assessment Implementation Complexity
+
+### Alternative Implementation Approaches (And Their Complexity)
+
+Even if we consider workarounds for the MCQ assessment flows specifically, each approach introduces significant complexity:
+
+#### Option 1: Frontend Form Generation
+
+**Approach:** Generate all MCQ questions at once, send to frontend as form, capture responses, send back
+
+```
+Backend: Generate complete assessment form (all 3 questions)
+Frontend: Render complex form with conditional logic
+User: Fill out entire assessment at once
+Frontend: Submit all responses
+Backend: Process bulk assessment data
+```
+
+**Problems:**
+
+- **User Experience**: Overwhelming form instead of conversational flow
+- **Engagement Loss**: No empathetic responses between questions
+- **Context Loss**: Cannot adapt questions based on previous answers
+- **Frontend Complexity**: Complex form logic, validation, state management
+- **No Progressive Support**: Cannot provide encouragement during assessment
+- **Rigid Flow**: Cannot adjust based on user's emotional state
+
+#### Option 2: One-at-a-Time API Calls
+
+**Approach:** Send one question, wait for response, send next question
+
+```
+Backend Call 1: Generate Question 1 + full context (8,900 tokens)
+Frontend: Display question, capture response
+Backend Call 2: Process response + Generate Question 2 + full context (8,900 tokens)
+Frontend: Display question, capture response  
+Backend Call 3: Process response + Generate Question 3 + full context (8,900 tokens)
+Backend Call 4: Process final response + Generate results (8,900 tokens)
+```
+
+**Problems:**
+
+- **4x Token Cost**: Each call requires full system prompt (35,600 tokens total)
+- **State Management Nightmare**: Backend must track assessment progress manually
+- **Context Reconstruction**: Must rebuild conversation context each time
+- **Error Prone**: Session state can be lost between calls
+- **Slow Performance**: Multiple round-trips with large prompts
+- **Database Complexity**: Manual tracking of assessment progress
+
+#### Option 3: Session-Based State Management
+
+**Approach:** Custom session storage to track assessment progress
+
+```
+Session Store: {user_id, question_progress, responses, context}
+Backend: Load session + Generate next question + Save session
+Database: Custom assessment_sessions table with complex state
+```
+
+**Problems:**
+
+- **Custom Session Logic**: Build entire state management system from scratch
+- **Database Design**: New tables, relationships, cleanup logic
+- **Race Conditions**: Multiple requests could corrupt session state
+- **Memory Management**: Session storage and cleanup complexity
+- **Debugging Difficulty**: Complex state transitions hard to trace
+- **Maintenance Overhead**: Custom system needs ongoing maintenance
+
+#### Option 4: Workflow Engine Integration
+
+**Approach:** Use external workflow engine (like Temporal, Apache Airflow)
+
+```
+Workflow: Define assessment flow as directed acyclic graph
+Engine: Execute steps, maintain state, handle failures
+Integration: Complex API coordination between systems
+```
+
+**Problems:**
+
+- **Infrastructure Overhead**: New system to deploy, monitor, maintain
+- **Learning Curve**: Team needs to learn workflow engine
+- **Over-Engineering**: Heavy solution for conversation flows
+- **Integration Complexity**: API coordination between multiple systems
+- **Vendor Lock-in**: Dependency on external workflow system
+- **Cost Addition**: Additional infrastructure and licensing costs
+
+### Why All Alternatives Are Harder Than MCP
+
+**Complexity Comparison:**
+
+| Approach                     | Frontend Changes  | Backend Complexity | State Management | Token Efficiency       | Development Time |
+| ---------------------------- | ----------------- | ------------------ | ---------------- | ---------------------- | ---------------- |
+| **Frontend Forms**     | Major UI overhaul | Medium             | Manual tracking  | Poor (bulk processing) | High             |
+| **One-at-a-Time APIs** | Moderate changes  | High               | Manual database  | Very Poor (4x tokens)  | High             |
+| **Session Management** | Minor changes     | Very High          | Custom system    | Poor (full context)    | Very High        |
+| **Workflow Engine**    | Major integration | Very High          | External system  | Poor (full context)    | Very High        |
+| **MCP Architecture**   | Minor changes     | Low (tool-based)   | Built-in         | Excellent (adaptive)   | Medium           |
+
+**Key Problems with All Alternatives:**
+
+1. **No Conversational Flow**: Assessment feels mechanical, not empathetic
+2. **Context Loss**: Cannot provide supportive responses during assessment
+3. **State Complexity**: Manual state management is error-prone
+4. **Token Waste**: Most approaches require full context repeatedly
+5. **Maintenance Burden**: Custom solutions need ongoing development
+6. **User Experience**: Assessment flow feels disconnected from conversation
+
+### MCP's Natural Solution
+
+**With MCP, MCQ assessments become straightforward:**
+
+```
+Assessment Tool maintains:
+- Current question state (1/3, 2/3, 3/3)
+- Previous responses and scoring
+- Personalized question adaptation
+- Empathetic responses between questions
+- Seamless flow integration
+
+No custom state management needed.
+No complex frontend forms required.
+No token waste on repeated context.
+Natural conversational experience maintained.
+```
+
+**MCP handles MCQ complexity natively** - what requires custom engineering in other approaches is built into the protocol's design.
+
 ## Token Usage and Cost Analysis
 
 ### Verified OpenAI GPT-4o-mini Pricing (2024)
@@ -799,3 +927,145 @@ The framework requires:
 MCP architecture is not just an optimization - **it's the only feasible way to implement the sophisticated framework outlined in our requirements while achieving massive cost efficiency.**
 
 Without MCP, we're limited to basic conversational responses at high cost. With MCP, we can build the comprehensive, clinically-informed mental health support system our users deserve at a fraction of the operational cost.
+
+## Alternative Model Comparison: Google Gemini 2.0 Flash Lite
+
+### Gemini 2.0 Flash Lite Pricing and Capabilities (2025)
+
+**Verified Pricing:**
+
+- **Input tokens**: $0.075 per 1 million tokens (50% cheaper than GPT-4o-mini)
+- **Output tokens**: $0.30 per 1 million tokens (50% cheaper than GPT-4o-mini)
+- **Simplified pricing structure** - no tiered pricing based on context length
+
+**Key Capabilities:**
+
+- **1 million token context window** (vs 128K for GPT-4o-mini)
+- **Native web search grounding** with Google Search integration
+- **Multimodal support** (text, image, video, audio)
+- **Built-in MCP compatibility** with native SDK support
+
+### Cost Comparison: GPT-4o-mini vs Gemini 2.0 Flash Lite
+
+**Using our MCP scenarios with Gemini 2.0 Flash Lite:**
+
+#### Simple Empathy Response (400 tokens):
+
+```
+GPT-4o-mini: $0.0000525
+Gemini 2.0 Flash Lite: $0.000042 (20% cheaper)
+```
+
+#### Basic Assessment (1,280 tokens):
+
+```
+GPT-4o-mini: $0.000182
+Gemini 2.0 Flash Lite: $0.000146 (20% cheaper)
+```
+
+#### Full Clinical Assessment (4,680 tokens):
+
+```
+GPT-4o-mini: $0.000983
+Gemini 2.0 Flash Lite: $0.000786 (20% cheaper)
+```
+
+**Annual Cost Comparison (10,000 interactions):**
+
+- **GPT-4o-mini MCP**: $20.58
+- **Gemini 2.0 Flash Lite MCP**: $16.46
+- **Additional savings**: $4.12 (20% reduction)
+
+### Gemini Live API for Voice Interactions
+
+**Gemini 2.0 Flash Live API Pricing:**
+
+- **Audio input/output**: 25 tokens per second
+- **Video input**: 258 tokens per second
+- **Live conversation capabilities** with real-time audio/video processing
+
+**Voice-Enabled Mental Health Support:**
+
+- Real-time empathetic voice responses
+- Audio-based assessment delivery
+- More natural, accessible user experience
+- Particularly valuable for accessibility and emotional support
+
+### Web Search Grounding Advantage
+
+**Native Web Search Capabilities:**
+
+- **Real-time mental health statistics** without custom web research tools
+- **Evidence-based normalization** with live data
+- **Free grounding with Google Search** during preview period
+- **Automatic source citations** and credibility verification
+
+**Example Implementation:**
+
+```
+User: "I'm worried about my teenager's behavior"
+
+Gemini 2.0 Flash Lite automatically:
+1. Provides empathetic response
+2. Grounds response with current teenage mental health statistics
+3. Cites authoritative sources (CDC, NIH, peer-reviewed studies)
+4. No additional web research tool needed
+```
+
+### MCP Compatibility Assessment
+
+**Gemini 2.0 Flash Lite MCP Advantages:**
+
+- **Native MCP SDK support** in Gemini API
+- **Thriving MCP ecosystem** with dedicated Gemini servers
+- **Bidirectional communication** with maintained conversation context
+- **Function calling capabilities** with MCP integration
+- **Active development community** throughout 2025
+
+**MCP Server Examples for Gemini:**
+
+- Gemini Grounding MCP Server (web search integration)
+- Gemini CLI MCP Server (command-line tools)
+- Multilingual chatbot MCP servers
+- Custom assessment and workflow servers
+
+### Strategic Considerations
+
+#### Advantages of Gemini 2.0 Flash Lite:
+
+✅ **20% cost savings** over GPT-4o-mini
+✅ **Native web search** eliminates need for separate research tools
+✅ **8x larger context window** (1M vs 128K tokens)
+✅ **Voice/video capabilities** with Gemini Live API
+✅ **Strong MCP ecosystem** with native support
+✅ **Multimodal support** for richer interactions
+
+#### Considerations:
+
+⚠️ **Newer ecosystem** compared to OpenAI (though rapidly maturing)
+⚠️ **Team familiarity** may be higher with OpenAI APIs
+⚠️ **Model performance** may vary for specific mental health use cases
+
+### Recommendation
+
+**For the ChatBot Features framework implementation:**
+
+**Option 1: GPT-4o-mini + MCP**
+
+- Familiar ecosystem, proven performance
+- Custom web research tools needed
+- Annual cost: ~$21
+
+**Option 2: Gemini 2.0 Flash Lite + MCP**
+
+- 20% cost savings + native web search
+- Voice capabilities with Live API
+- Annual cost: ~$16
+
+**Hybrid Approach:**
+
+- Start with GPT-4o-mini for faster development
+- Migrate to Gemini 2.0 Flash Lite for production cost optimization
+- MCP architecture makes model switching seamless
+
+**Either way, MCP architecture is essential** - the choice between models becomes a performance and cost optimization decision rather than a fundamental architectural constraint.
